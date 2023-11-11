@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Code Scanner</title>
+    <style>
+        .container{
+            background-color: rgb(16, 17, 17);
+            color: rgb(253, 246, 246);
+            padding: 4rem;
+            padding-left: 250px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+    <h1>QR Code Scanner</h1>
+    <button id="start-camera-button">Start Camera</button>
+    <video id="qr-video" width="300" height="300" autoplay playsinline></video>
+    <p>Scanned QR Code Data: <input type="text" id="qr-data-input"></p>
+
+</div>
+
+    <script src="https://cdn.rawgit.com/cozmo/jsQR/master/dist/jsQR.js"></script>
+    <script>
+        const startCameraButton = document.getElementById('start-camera-button');
+        const video = document.getElementById('qr-video');
+        const qrDataInputElement = document.getElementById('qr-data-input');
+        let cameraStream;
+
+        startCameraButton.addEventListener('click', () => {
+            startCamera();
+        });
+
+        function startCamera() {
+            startCameraButton.disabled = true; // Disable the button after starting the camera
+
+            // Request access to the camera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then((stream) => {
+                    cameraStream = stream; // Store the camera stream
+                    video.srcObject = stream;
+                    return video.play();
+                })
+                .then(() => {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+
+                    const scanQRCode = () => {
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                        if (code) {
+                            const qrCodeData = code.data;
+                            qrDataInputElement.value = qrCodeData;
+                            stopCamera();
+                        }
+
+                        requestAnimationFrame(scanQRCode);
+                    };
+
+                    scanQRCode();
+                })
+                .catch((error) => {
+                    console.error('Error accessing camera: ', error);
+                    startCameraButton.disabled = false; // Re-enable the button in case of an error
+                });
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                const tracks = cameraStream.getTracks();
+                tracks.forEach((track) => track.stop());
+                video.style.display = 'none'; // Hide the video element
+            }
+        }
+    </script>
+</body>
+</html>
